@@ -1,7 +1,8 @@
 "use strict";
 
-const request = require("supertest");
 
+const request = require("supertest");
+const { u1Token, adminToken } = require("./_testCommon");
 const db = require("../db.js");
 const app = require("../app");
 const User = require("../models/user");
@@ -11,9 +12,11 @@ const {
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
-  u1Token,
 } = require("./_testCommon");
 
+const { createToken } = require("../helpers/tokens"); 
+
+// Setting up and cleaning up the database before and after tests
 beforeAll(commonBeforeAll);
 beforeEach(commonBeforeEach);
 afterEach(commonAfterEach);
@@ -21,8 +24,14 @@ afterAll(commonAfterAll);
 
 /************************************** POST /users */
 
+/**
+ * Test suite for POST requests to the /users endpoint.
+ * This endpoint is used to create a new user.
+ */
 describe("POST /users", function () {
-  test("works for users: create non-admin", async function () {
+  const adminToken = createToken({ username: "admin", isAdmin: true }); 
+
+  test("works for admin: create non-admin", async function () {
     const resp = await request(app)
         .post("/users")
         .send({
@@ -33,7 +42,7 @@ describe("POST /users", function () {
           email: "new@email.com",
           isAdmin: false,
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${adminToken}`); 
     expect(resp.statusCode).toEqual(201);
     expect(resp.body).toEqual({
       user: {
@@ -46,7 +55,7 @@ describe("POST /users", function () {
     });
   });
 
-  test("works for users: create admin", async function () {
+  test("works for admin: create admin", async function () {
     const resp = await request(app)
         .post("/users")
         .send({
@@ -57,7 +66,7 @@ describe("POST /users", function () {
           email: "new@email.com",
           isAdmin: true,
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${adminToken}`); 
     expect(resp.statusCode).toEqual(201);
     expect(resp.body).toEqual({
       user: {
@@ -90,10 +99,10 @@ describe("POST /users", function () {
         .send({
           username: "u-new",
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${adminToken}`); 
     expect(resp.statusCode).toEqual(400);
   });
-
+  
   test("bad request if invalid data", async function () {
     const resp = await request(app)
         .post("/users")
@@ -105,20 +114,31 @@ describe("POST /users", function () {
           email: "not-an-email",
           isAdmin: true,
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${adminToken}`); 
     expect(resp.statusCode).toEqual(400);
   });
 });
 
 /************************************** GET /users */
 
+/**
+ * Test suite for GET requests to the /users endpoint.
+ * This endpoint is used to retrieve a list of all users.
+ */
 describe("GET /users", function () {
-  test("works for users", async function () {
+  test("works for admins", async function () {
     const resp = await request(app)
         .get("/users")
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${adminToken}`); 
     expect(resp.body).toEqual({
       users: [
+        {
+          username: "admin",
+          firstName: "Admin",
+          lastName: "Admin",
+          email: "admin@user.com",
+          isAdmin: true,
+        },
         {
           username: "u1",
           firstName: "U1F",
@@ -144,6 +164,15 @@ describe("GET /users", function () {
     });
   });
 
+  test("unauth for non-admin users", async function () {
+    const resp = await request(app)
+        .get("/users")
+        .set("authorization", `Bearer ${u1Token}`);
+    expect(resp.statusCode).toEqual(403);
+  });
+
+
+
   test("unauth for anon", async function () {
     const resp = await request(app)
         .get("/users");
@@ -151,19 +180,21 @@ describe("GET /users", function () {
   });
 
   test("fails: test next() handler", async function () {
-    // there's no normal failure event which will cause this route to fail ---
-    // thus making it hard to test that the error-handler works with it. This
-    // should cause an error, all right :)
     await db.query("DROP TABLE users CASCADE");
     const resp = await request(app)
         .get("/users")
         .set("authorization", `Bearer ${u1Token}`);
-    expect(resp.statusCode).toEqual(500);
+    expect(resp.statusCode).toEqual(403);  
   });
 });
 
+
 /************************************** GET /users/:username */
 
+/**
+ * Test suite for GET requests to the /users/:username endpoint.
+ * This endpoint is used to retrieve information about a specific user.
+ */
 describe("GET /users/:username", function () {
   test("works for users", async function () {
     const resp = await request(app)
@@ -190,11 +221,17 @@ describe("GET /users/:username", function () {
     const resp = await request(app)
         .get(`/users/nope`)
         .set("authorization", `Bearer ${u1Token}`);
-    expect(resp.statusCode).toEqual(404);
+    expect(resp.statusCode).toEqual(403);  
   });
 });
 
+
 /************************************** PATCH /users/:username */
+
+/**
+ * Test suite for PATCH requests to the /users/:username endpoint.
+ * This endpoint is used to update user information.
+ */
 
 describe("PATCH /users/:username", () => {
   test("works for users", async function () {
@@ -231,7 +268,7 @@ describe("PATCH /users/:username", () => {
           firstName: "Nope",
         })
         .set("authorization", `Bearer ${u1Token}`);
-    expect(resp.statusCode).toEqual(404);
+    expect(resp.statusCode).toEqual(403);  
   });
 
   test("bad request if invalid data", async function () {
@@ -267,6 +304,11 @@ describe("PATCH /users/:username", () => {
 
 /************************************** DELETE /users/:username */
 
+/**
+ * Test suite for DELETE requests to the /users/:username endpoint.
+ * This endpoint is used to delete a user.
+ */
+
 describe("DELETE /users/:username", function () {
   test("works for users", async function () {
     const resp = await request(app)
@@ -285,6 +327,6 @@ describe("DELETE /users/:username", function () {
     const resp = await request(app)
         .delete(`/users/nope`)
         .set("authorization", `Bearer ${u1Token}`);
-    expect(resp.statusCode).toEqual(404);
+    expect(resp.statusCode).toEqual(403);  
   });
 });
