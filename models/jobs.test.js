@@ -139,7 +139,6 @@ describe("update", function () {
     }
   });
 
-  // ... other tests ...
 });
 
 /************************************** remove */

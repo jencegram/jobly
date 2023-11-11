@@ -118,6 +118,69 @@ describe("GET /jobs/:id", function () {
   });
 });
 
+/************************************** GET /jobs with filters */
+
+describe("GET /jobs with filters", function () {
+  test("works: filtering by title", async function () {
+    const resp = await request(app).get("/jobs").query({ title: "Job1" });
+    expect(resp.body).toEqual({
+      jobs: [
+        {
+          id: testJobIds[0],
+          title: "Job1",
+          salary: 100000,
+          equity: "0.1",
+          companyHandle: "c1"
+        }
+      ]
+    });
+  });
+
+  test("works: filtering by minSalary", async function () {
+    const resp = await request(app).get("/jobs").query({ minSalary: 105000 });
+    expect(resp.body).toEqual({
+      jobs: [
+        {
+          id: testJobIds[1],
+          title: "Job2",
+          salary: 120000,
+          equity: "0.2",
+          companyHandle: "c1"
+        },
+        {
+          id: testJobIds[2],
+          title: "Job3",
+          salary: 110000,
+          equity: null,
+          companyHandle: "c2"
+        }
+      ]
+    });
+  });
+
+  test("works: filtering by hasEquity", async function () {
+    const resp = await request(app).get("/jobs").query({ hasEquity: true });
+    expect(resp.body).toEqual({
+      jobs: [
+        {
+          id: testJobIds[0],
+          title: "Job1",
+          salary: 100000,
+          equity: "0.1",
+          companyHandle: "c1"
+        },
+        {
+          id: testJobIds[1],
+          title: "Job2",
+          salary: 120000,
+          equity: "0.2",
+          companyHandle: "c1"
+        }
+      ]
+    });
+  });
+});
+
 /************************************** PATCH /jobs/:id */
 
 describe("PATCH /jobs/:id", function () {
@@ -149,7 +212,6 @@ describe("PATCH /jobs/:id", function () {
     expect(resp.statusCode).toEqual(403);
   });
 
-  // Additional tests as needed
 });
 
 /************************************** DELETE /jobs/:id */

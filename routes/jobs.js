@@ -34,7 +34,12 @@ router.post("/", ensureAdmin, async function (req, res, next) {
   }
 });
 
-/** GET /jobs - Get list of jobs.
+/** GET /jobs - Get list of jobs with optional filtering.
+ * 
+ * Can filter on provided search filters:
+ * - title (case-insensitive, matches any part of the string)
+ * - minSalary (minimum salary)
+ * - hasEquity (true returns only jobs with non-zero equity)
  * 
  * Returns [{ id, title, salary, equity, companyHandle }, ...]
  * 
@@ -42,7 +47,11 @@ router.post("/", ensureAdmin, async function (req, res, next) {
  */
 router.get("/", async function (req, res, next) {
   try {
-    const jobs = await Job.findAll();
+    // Extract filters from query string
+    const { title, minSalary, hasEquity } = req.query;
+    const filters = { title, minSalary, hasEquity };
+
+    const jobs = await Job.findAll(filters);
     return res.json({ jobs });
   } catch (err) {
     return next(err);

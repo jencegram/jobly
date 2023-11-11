@@ -41,19 +41,42 @@ class Job {
     return job;
   }
 
-  /** Find all jobs.
+  /** Find all jobs (optionally filtered).
+   *
+   * Filters can include:
+   * - title (will match any part of title)
+   * - minSalary
+   * - hasEquity (true to include jobs with non-zero equity)
    *
    * Returns [{ id, title, salary, equity, companyHandle }, ...]
    */
-  static async findAll() {
-    const query = `SELECT id,
-                          title,
-                          salary,
-                          equity,
-                          company_handle AS "companyHandle"
-                   FROM jobs
-                   ORDER BY title`;
-    const jobsRes = await db.query(query);
+  static async findAll({ title, minSalary, hasEquity } = {}) {
+    let query = `SELECT id, title, salary, equity, company_handle AS "companyHandle"
+                 FROM jobs`;
+    let whereExpressions = [];
+    let queryValues = [];
+
+    // Add filters to query
+    if (title) {
+      queryValues.push(`%${title}%`);
+      whereExpressions.push(`title ILIKE $${queryValues.length}`);
+    }
+
+    if (minSalary) {
+      queryValues.push(minSalary);
+      whereExpressions.push(`salary >= $${queryValues.length}`);
+    }
+
+    if (hasEquity === "true") {
+      whereExpressions.push(`equity > 0`);
+    }
+
+    if (whereExpressions.length > 0) {
+      query += " WHERE " + whereExpressions.join(" AND ");
+    }
+
+    query += " ORDER BY title";
+    const jobsRes = await db.query(query, queryValues);
     return jobsRes.rows;
   }
 
