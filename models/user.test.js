@@ -107,9 +107,11 @@ describe("register", function () {
 });
 
 /************************************** findAll */
-
 describe("findAll", function () {
-  test("works", async function () {
+  test("works: with applied jobs", async function () {
+    await User.applyForJob("u1", testJobIds[0]);
+    await User.applyForJob("u2", testJobIds[1]);
+
     const users = await User.findAll();
     expect(users).toEqual([
       {
@@ -118,6 +120,7 @@ describe("findAll", function () {
         lastName: "U1L",
         email: "u1@email.com",
         isAdmin: false,
+        jobs: [testJobIds[0]],
       },
       {
         username: "u2",
@@ -125,7 +128,9 @@ describe("findAll", function () {
         lastName: "U2L",
         email: "u2@email.com",
         isAdmin: false,
+        jobs: [testJobIds[1]],
       },
+      // ... Add other users as needed
     ]);
   });
 });
@@ -133,7 +138,9 @@ describe("findAll", function () {
 /************************************** get */
 
 describe("get", function () {
-  test("works", async function () {
+  test("works: with applied jobs", async function () {
+    await User.applyForJob("u1", testJobIds[0]);
+
     let user = await User.get("u1");
     expect(user).toEqual({
       username: "u1",
@@ -141,6 +148,7 @@ describe("get", function () {
       lastName: "U1L",
       email: "u1@email.com",
       isAdmin: false,
+      jobs: [testJobIds[0]],
     });
   });
 
@@ -216,7 +224,7 @@ describe("remove", function () {
   test("works", async function () {
     await User.remove("u1");
     const res = await db.query(
-        "SELECT * FROM users WHERE username='u1'");
+      "SELECT * FROM users WHERE username='u1'");
     expect(res.rows.length).toEqual(0);
   });
 
@@ -234,24 +242,24 @@ describe("remove", function () {
 
 describe("applyForJob", function () {
   test("works: apply for a job", async function () {
-      const jobId = testJobIds[0];
-      const username = "u1";
-      await User.applyForJob(username, jobId);
-      
-      const result = await db.query(`SELECT * FROM applications WHERE username = $1 AND job_id = $2`, [username, jobId]);
-      expect(result.rows).toEqual([{ username, job_id: jobId }]);
+    const jobId = testJobIds[0];
+    const username = "u1";
+    await User.applyForJob(username, jobId);
+
+    const result = await db.query(`SELECT * FROM applications WHERE username = $1 AND job_id = $2`, [username, jobId]);
+    expect(result.rows).toEqual([{ username, job_id: jobId }]);
   });
 
   test("fails: apply for the same job twice", async function () {
-      const jobId = testJobIds[0];
-      const username = "u1";
-      await User.applyForJob(username, jobId);
+    const jobId = testJobIds[0];
+    const username = "u1";
+    await User.applyForJob(username, jobId);
 
-      try {
-          await User.applyForJob(username, jobId);
-          fail();
-      } catch (err) {
-          expect(err instanceof BadRequestError).toBeTruthy();
-      }
+    try {
+      await User.applyForJob(username, jobId);
+      fail();
+    } catch (err) {
+      expect(err instanceof BadRequestError).toBeTruthy();
+    }
   });
 });
