@@ -3,6 +3,8 @@
 const db = require("../db.js");
 const { BadRequestError, NotFoundError } = require("../expressError");
 const Company = require("./company.js");
+const { testJobIds } = require("../routes/_testCommon");
+
 const {
   commonBeforeAll,
   commonBeforeEach,
@@ -179,6 +181,10 @@ describe("get", function () {
       description: "Desc1",
       numEmployees: 1,
       logoUrl: "http://c1.img",
+      jobs: [
+        { id: expect.any(Number), title: "Job1", salary: 100000, equity: "0.1" },
+        { id: expect.any(Number), title: "Job2", salary: 120000, equity: "0.2" },
+      ],
     });
   });
 
@@ -191,6 +197,8 @@ describe("get", function () {
     }
   });
 });
+
+
 
 /************************************** update */
 
