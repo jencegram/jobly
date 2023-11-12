@@ -1,5 +1,5 @@
 "use strict";
-
+const jobSearchSchema = require("../schemas/jobSearch.json");
 const jsonschema = require("jsonschema");
 const express = require("express");
 const { BadRequestError, NotFoundError } = require("../expressError");
@@ -47,7 +47,17 @@ router.post("/", ensureAdmin, async function (req, res, next) {
  */
 router.get("/", async function (req, res, next) {
   try {
-    // Extract filters from query string
+    // Convert query parameters to correct types
+    if (req.query.minSalary !== undefined) req.query.minSalary = +req.query.minSalary;
+    req.query.hasEquity = req.query.hasEquity === "true";
+
+    // Validate query parameters using jobSearchSchema
+    const validator = jsonschema.validate(req.query, jobSearchSchema);
+    if (!validator.valid) {
+      const errs = validator.errors.map(e => e.stack);
+      throw new BadRequestError(errs);
+    }
+
     const { title, minSalary, hasEquity } = req.query;
     const filters = { title, minSalary, hasEquity };
 
