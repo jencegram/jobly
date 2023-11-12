@@ -24,7 +24,7 @@ class User {
   static async authenticate(username, password) {
     // try to find the user first
     const result = await db.query(
-          `SELECT username,
+      `SELECT username,
                   password,
                   first_name AS "firstName",
                   last_name AS "lastName",
@@ -32,7 +32,7 @@ class User {
                   is_admin AS "isAdmin"
            FROM users
            WHERE username = $1`,
-        [username],
+      [username],
     );
 
     const user = result.rows[0];
@@ -57,12 +57,12 @@ class User {
    **/
 
   static async register(
-      { username, password, firstName, lastName, email, isAdmin }) {
+    { username, password, firstName, lastName, email, isAdmin }) {
     const duplicateCheck = await db.query(
-          `SELECT username
+      `SELECT username
            FROM users
            WHERE username = $1`,
-        [username],
+      [username],
     );
 
     if (duplicateCheck.rows[0]) {
@@ -72,7 +72,7 @@ class User {
     const hashedPassword = await bcrypt.hash(password, BCRYPT_WORK_FACTOR);
 
     const result = await db.query(
-          `INSERT INTO users
+      `INSERT INTO users
            (username,
             password,
             first_name,
@@ -81,14 +81,14 @@ class User {
             is_admin)
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING username, first_name AS "firstName", last_name AS "lastName", email, is_admin AS "isAdmin"`,
-        [
-          username,
-          hashedPassword,
-          firstName,
-          lastName,
-          email,
-          isAdmin,
-        ],
+      [
+        username,
+        hashedPassword,
+        firstName,
+        lastName,
+        email,
+        isAdmin,
+      ],
     );
 
     const user = result.rows[0];
@@ -96,51 +96,76 @@ class User {
     return user;
   }
 
-  /** Find all users.
-   *
-   * Returns [{ username, first_name, last_name, email, is_admin }, ...]
-   **/
+  /** Find all users with their applied job IDs.
+ *
+ * Returns an array of user objects. Each user object contains:
+ *  - username
+ *  - firstName
+ *  - lastName
+ *  - email
+ *  - isAdmin
+ *  - jobs: an array of job IDs the user has applied for
+ **/
 
   static async findAll() {
-    const result = await db.query(
-          `SELECT username,
-                  first_name AS "firstName",
-                  last_name AS "lastName",
-                  email,
-                  is_admin AS "isAdmin"
-           FROM users
-           ORDER BY username`,
+    const userRes = await db.query(
+      `SELECT username,
+              first_name AS "firstName",
+              last_name AS "lastName",
+              email,
+              is_admin AS "isAdmin"
+       FROM users
+       ORDER BY username`,
     );
 
-    return result.rows;
+    const users = userRes.rows;
+
+    for (let user of users) {
+      const jobIds = await User.getAppliedJobs(user.username);
+      user.jobs = jobIds;
+    }
+
+    return users;
   }
 
-  /** Given a username, return data about user.
-   *
-   * Returns { username, first_name, last_name, is_admin, jobs }
-   *   where jobs is { id, title, company_handle, company_name, state }
-   *
-   * Throws NotFoundError if user not found.
-   **/
+
+  /** Given a username, return detailed information about the user, including applied jobs.
+ *
+ * Returns an object containing:
+ *  - username
+ *  - firstName
+ *  - lastName
+ *  - email
+ *  - isAdmin
+ *  - jobs: an array of job IDs the user has applied for
+ *
+ * Throws NotFoundError if user not found.
+ **/
 
   static async get(username) {
     const userRes = await db.query(
-          `SELECT username,
-                  first_name AS "firstName",
-                  last_name AS "lastName",
-                  email,
-                  is_admin AS "isAdmin"
-           FROM users
-           WHERE username = $1`,
-        [username],
+      `SELECT username,
+              first_name AS "firstName",
+              last_name AS "lastName",
+              email,
+              is_admin AS "isAdmin"
+       FROM users
+       WHERE username = $1`,
+      [username],
     );
 
     const user = userRes.rows[0];
 
-    if (!user) throw new NotFoundError(`No user: ${username}`);
+    if (!user) {
+      throw new NotFoundError(`No user: ${username}`);
+    }
+
+    const jobIds = await User.getAppliedJobs(username);
+    user.jobs = jobIds;
 
     return user;
   }
+
 
   /** Update user data with `data`.
    *
@@ -165,12 +190,12 @@ class User {
     }
 
     const { setCols, values } = sqlForPartialUpdate(
-        data,
-        {
-          firstName: "first_name",
-          lastName: "last_name",
-          isAdmin: "is_admin",
-        });
+      data,
+      {
+        firstName: "first_name",
+        lastName: "last_name",
+        isAdmin: "is_admin",
+      });
     const usernameVarIdx = "$" + (values.length + 1);
 
     const querySql = `UPDATE users 
@@ -194,11 +219,11 @@ class User {
 
   static async remove(username) {
     let result = await db.query(
-          `DELETE
+      `DELETE
            FROM users
            WHERE username = $1
            RETURNING username`,
-        [username],
+      [username],
     );
     const user = result.rows[0];
 
@@ -245,6 +270,16 @@ class User {
     );
 
     return result.rows[0];
+  }
+
+  // Given a username, returns a list of job IDs applied by the user.
+  static async getAppliedJobs(username) {
+    const result = await db.query(
+      `SELECT job_id FROM applications WHERE username = $1`,
+      [username]
+    );
+    // console.log(`Jobs applied by ${username}:`, result.rows.map(row => row.job_id)); // Log the job IDs
+    return result.rows.map(row => row.job_id);
   }
 }
 
