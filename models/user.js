@@ -204,7 +204,48 @@ class User {
 
     if (!user) throw new NotFoundError(`No user: ${username}`);
   }
-}
 
+
+  /** Apply for a job with a given user and job ID.
+ *
+ * Checks if the job exists and if the user has already applied for the job.
+ * If the job doesn't exist, throws NotFoundError.
+ * If the user has already applied for the job, throws BadRequestError.
+ *
+ * - username - The username of the user applying for the job.
+ * - jobId - The ID of the job to apply to.
+ **/
+
+  static async applyForJob(username, jobId) {
+    // Check if the job exists
+    const jobRes = await db.query(
+      `SELECT id FROM jobs WHERE id = $1`, [jobId]
+    );
+    if (jobRes.rows.length === 0) {
+      throw new NotFoundError(`No job: ${jobId}`);
+    }
+
+    // Check if the user has already applied for the job
+    const duplicateCheck = await db.query(
+      `SELECT username 
+       FROM applications 
+       WHERE username = $1 AND job_id = $2`,
+      [username, jobId]
+    );
+    if (duplicateCheck.rows[0]) {
+      throw new BadRequestError(`Duplicate application: ${username} has already applied for job ${jobId}`);
+    }
+
+    // Apply for the job
+    const result = await db.query(
+      `INSERT INTO applications (username, job_id)
+       VALUES ($1, $2)
+       RETURNING job_id`,
+      [username, jobId]
+    );
+
+    return result.rows[0];
+  }
+}
 
 module.exports = User;
