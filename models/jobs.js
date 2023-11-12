@@ -67,7 +67,7 @@ class Job {
       whereExpressions.push(`salary >= $${queryValues.length}`);
     }
 
-    if (hasEquity === "true") {
+    if (hasEquity) {  // Updated to expect a boolean
       whereExpressions.push(`equity > 0`);
     }
 
@@ -120,10 +120,7 @@ class Job {
   static async update(id, data) {
     const { setCols, values } = sqlForPartialUpdate(
       data,
-      {
-        // If you have any transformations that are needed, you can add them here
-      }
-    );
+      {});
     const idVarIdx = "$" + (values.length + 1);
 
     const querySql = `UPDATE jobs 
