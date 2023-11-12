@@ -123,6 +123,7 @@ describe("GET /jobs/:id", function () {
 describe("GET /jobs with filters", function () {
   test("works: filtering by title", async function () {
     const resp = await request(app).get("/jobs").query({ title: "Job1" });
+    expect(resp.statusCode).toEqual(200);
     expect(resp.body).toEqual({
       jobs: [
         {
@@ -138,6 +139,7 @@ describe("GET /jobs with filters", function () {
 
   test("works: filtering by minSalary", async function () {
     const resp = await request(app).get("/jobs").query({ minSalary: 105000 });
+    expect(resp.statusCode).toEqual(200);
     expect(resp.body).toEqual({
       jobs: [
         {
@@ -159,7 +161,8 @@ describe("GET /jobs with filters", function () {
   });
 
   test("works: filtering by hasEquity", async function () {
-    const resp = await request(app).get("/jobs").query({ hasEquity: true });
+    const resp = await request(app).get("/jobs").query({ hasEquity: true }); // Pass boolean true
+    expect(resp.statusCode).toEqual(200);
     expect(resp.body).toEqual({
       jobs: [
         {
@@ -178,6 +181,12 @@ describe("GET /jobs with filters", function () {
         }
       ]
     });
+  });
+
+  
+  test("fails: invalid query parameter", async function () {
+    const resp = await request(app).get("/jobs").query({ invalidParam: "test" });
+    expect(resp.statusCode).toEqual(400);
   });
 });
 
