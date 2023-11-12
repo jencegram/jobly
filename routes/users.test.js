@@ -2,7 +2,7 @@
 
 
 const request = require("supertest");
-const { u1Token, adminToken } = require("./_testCommon");
+const { u1Token, adminToken, testJobIds } = require("./_testCommon");
 const db = require("../db.js");
 const app = require("../app");
 const User = require("../models/user");
@@ -116,6 +116,51 @@ describe("POST /users", function () {
         })
         .set("authorization", `Bearer ${adminToken}`); 
     expect(resp.statusCode).toEqual(400);
+  });
+});
+
+/************************************** POST /users/:username/jobs/:id */
+
+/**
+ * Test suite for POST requests to the /users/:username/jobs/:id endpoint.
+ * This endpoint allows users or admins to apply for a job on behalf of the user.
+ */
+describe("POST /users/:username/jobs/:id", function () {
+  test("works for users", async function () {
+    const resp = await request(app)
+      .post(`/users/u1/jobs/${testJobIds[0]}`)
+      .set("authorization", `Bearer ${u1Token}`);
+    expect(resp.statusCode).toEqual(201);
+    expect(resp.body).toEqual({ applied: String(testJobIds[0]) }); // Convert jobId to a string
+  });
+  
+  test("works for admins", async function () {
+    const resp = await request(app)
+      .post(`/users/u1/jobs/${testJobIds[1]}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(resp.statusCode).toEqual(201);
+    expect(resp.body).toEqual({ applied: String(testJobIds[1]) }); // Convert jobId to a string
+  });
+
+  test("unauth for anon", async function () {
+    const resp = await request(app)
+        .post(`/users/u1/jobs/${testJobIds[0]}`);
+    expect(resp.statusCode).toEqual(401);
+  });
+
+  test("not found if job not found", async function () {
+    const resp = await request(app)
+        .post(`/users/u1/jobs/0`)
+        .set("authorization", `Bearer ${u1Token}`);
+    expect(resp.statusCode).toEqual(404);
+  });
+
+  test("bad request if user already applied", async function () {
+    await User.applyForJob("u1", testJobIds[0]); 
+    const resp = await request(app)
+        .post(`/users/u1/jobs/${testJobIds[0]}`)
+        .set("authorization", `Bearer ${u1Token}`);
+    expect(resp.statusCode).toEqual(400); 
   });
 });
 
